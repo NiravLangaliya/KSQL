@@ -1,0 +1,119 @@
+https://docs.confluent.io/current/quickstart/cos-quickstart.html
+
+#####Step : Start Confluent Platform using the Confluent CLI. 
+
+/home/nirav/nlangaliya/confluent-5.2.1/bin/confluent start
+This CLI is intended for development only, not for production
+https://docs.confluent.io/current/cli/index.html
+
+Using CONFLUENT_CURRENT: /tmp/confluent.huk7x4K0
+Starting zookeeper
+zookeeper is [UP]
+Starting kafka
+kafka is [UP]
+Starting schema-registry
+schema-registry is [UP]
+Starting kafka-rest
+kafka-rest is [UP]
+Starting connect
+connect is [UP]
+Starting ksql-server
+ksql-server is [UP]
+Starting control-center
+control-center is [UP]
+
+#####Step : Install the Kafka Connect Datagen source connector using the Confluent Hub client. 
+
+/home/nirav/nlangaliya/confluent-5.2.1/bin/confluent-hub install \
+--no-prompt confluentinc/kafka-connect-datagen:0.1.0
+
+#####Step : Stop Confluent Platform using the Confluent CLI. 
+
+/home/nirav/nlangaliya/confluent-5.2.1/bin/confluent stop
+
+#####Step : Start Confluent Platform using the Confluent CLI. 
+
+/home/nirav/nlangaliya/confluent-5.2.1/bin/confluent start
+
+Step 2: Create Kafka Topics
+
+#####Create Topic users
+
+/home/nirav/nlangaliya/confluent-5.2.1/bin/kafka-topics --create --zookeeper localhost:2181 \
+--replication-factor 1 --partitions 1 --topic users
+
+#####Create Topic pageviews
+
+/home/nirav/nlangaliya/confluent-5.2.1/bin/kafka-topics --create --zookeeper localhost:2181   \
+--replication-factor 1 --partitions 1 --topic pageviews
+
+wget https://github.com/confluentinc/kafka-connect-datagen/raw/master/config/connector_pageviews_cos.config
+curl -X POST -H "Content-Type: application/json" --data @connector_pageviews_cos.config http://localhost:8083/connectors
+
+wget https://github.com/confluentinc/kafka-connect-datagen/raw/master/config/connector_users_cos.config
+curl -X POST -H "Content-Type: application/json" --data @connector_users_cos.config http://localhost:8083/connectors
+
+
+
+LOG_DIR=./ksql_logs /home/nirav/nlangaliya/confluent-5.2.1/bin/ksql
+
+
+CREATE STREAM pageviews (viewtime BIGINT, userid VARCHAR, pageid VARCHAR) \
+WITH (KAFKA_TOPIC='pageviews', VALUE_FORMAT='AVRO');
+
+
+CREATE TABLE users (registertime BIGINT, gender VARCHAR, regionid VARCHAR,  \
+userid VARCHAR) \
+WITH (KAFKA_TOPIC='users', VALUE_FORMAT='AVRO', KEY = 'userid');
+
+
+ksql> describe users;
+
+Name                 : USERS
+ Field        | Type
+------------------------------------------
+ ROWTIME      | BIGINT           (system)
+ ROWKEY       | VARCHAR(STRING)  (system)
+ REGISTERTIME | BIGINT
+ GENDER       | VARCHAR(STRING)
+ REGIONID     | VARCHAR(STRING)
+ USERID       | VARCHAR(STRING)
+------------------------------------------
+For runtime statistics and query details run: DESCRIBE EXTENDED <Stream,Table>;
+ksql>
+ksql> describe extended users;
+
+Name                 : USERS
+Type                 : TABLE
+Key field            : USERID
+Key format           : STRING
+Timestamp field      : Not set - using <ROWTIME>
+Value format         : AVRO
+Kafka topic          : users (partitions: 1, replication: 1)
+
+ Field        | Type
+------------------------------------------
+ ROWTIME      | BIGINT           (system)
+ ROWKEY       | VARCHAR(STRING)  (system)
+ REGISTERTIME | BIGINT
+ GENDER       | VARCHAR(STRING)
+ REGIONID     | VARCHAR(STRING)
+ USERID       | VARCHAR(STRING)
+------------------------------------------
+
+Local runtime statistics
+------------------------
+
+
+(Statistics of the local KSQL server interaction with the Kafka topic users)
+
+
+
+SET 'auto.offset.reset'='earliest';
+
+
+SELECT pageid FROM pageviews LIMIT 3;
+
+SELECT registertime,gender,regionid FROM users LIMIT 3;
+
+https://docs.confluent.io/current/quickstart/cos-quickstart.html
