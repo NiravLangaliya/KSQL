@@ -57,11 +57,11 @@ curl -X POST -H "Content-Type: application/json" --data @connector_users_cos.con
 
 LOG_DIR=./ksql_logs /home/nirav/nlangaliya/confluent-5.2.1/bin/ksql
 
-
+--create stream 
 CREATE STREAM pageviews (viewtime BIGINT, userid VARCHAR, pageid VARCHAR) \
 WITH (KAFKA_TOPIC='pageviews', VALUE_FORMAT='AVRO');
 
-
+--create table 
 CREATE TABLE users (registertime BIGINT, gender VARCHAR, regionid VARCHAR,  \
 userid VARCHAR) \
 WITH (KAFKA_TOPIC='users', VALUE_FORMAT='AVRO', KEY = 'userid');
@@ -111,9 +111,22 @@ Local runtime statistics
 
 SET 'auto.offset.reset'='earliest';
 
+--- check three record from steam which is created on topic pageviews 
 
 SELECT pageid FROM pageviews LIMIT 3;
 
+--- check three record from table which is created on topic users 
 SELECT registertime,gender,regionid FROM users LIMIT 3;
+
+-----Create a persistent query that filters for female users. The results from this query are written to the Kafka PAGEVIEWS_FEMALE topic. This query enriches the pageviews STREAM by doing a LEFT JOIN with the users TABLE on the user ID, where a condition (gender = 'FEMALE') is met.
+
+CREATE STREAM pageviews_female AS SELECT users.userid AS userid, pageid, \
+regionid, gender FROM pageviews LEFT JOIN users ON pageviews.userid = users.userid \
+WHERE gender = 'FEMALE';
+
+---Create a persistent query where a condition (regionid) is met, using LIKE. Results from this query are written to a Kafka topic named pageviews_enriched_r8_r9.
+
+CREATE STREAM pageviews_female_like_89 WITH (kafka_topic='pageviews_enriched_r8_r9', \
+value_format='AVRO') AS SELECT * FROM pageviews_female WHERE regionid LIKE '%_8' OR regionid LIKE '%_9';
 
 https://docs.confluent.io/current/quickstart/cos-quickstart.html
